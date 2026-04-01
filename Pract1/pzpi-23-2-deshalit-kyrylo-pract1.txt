@@ -249,3 +249,18 @@ o додано хронологічний опис.
 73         Console.WriteLine("Text after encyption: " + reverseText.GetText());
 74     }
 75 }
+76
+77
+78 //Create an example of Decorator pattern usage with C#. 
+79 //You have to create base ITextComponent interface, 
+80 //ConcreteTextComponent implementation, EncryptDecorator 
+81 //abstract class with basic encrypt and decrypt methods,
+82 //and its two subclasses: CaesarDecorator that uses Caesar
+83 //cipher with shift by 3 and Reverse Decorator that reverses given string.
+84 //Think carefully, write concise code and don't leave any redundant comments
+85 
+86 //Now rewrite the code for a more classic approach where data only flows 
+87 //one way through the decorator chain, remove decryption functionality
+88 
+89 //Change static void Main so the user can see original text 
+90 //and text after encryption in the console output

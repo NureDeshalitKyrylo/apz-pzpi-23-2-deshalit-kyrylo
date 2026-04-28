@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YouTube API — Architecture Demo</title>
+<style>
+  /* ── Fonts ── */
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;600&display=swap');
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --border: #2a2a2a;
+    --accent: #ff0033;
+    --accent2: #ff6b00;
+    --text: #e8e8e8;
+    --muted: #666;
+    --code-bg: #1a1a1a;
+    --radius: 6px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    padding: 32px 16px 64px;
+  }
+
+  header {
+    max-width: 820px;
+    margin: 0 auto 40px;
+    border-left: 3px solid var(--accent);
+    padding-left: 18px;
+  }
+  header h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.5rem;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+  }
+  header p { color: var(--muted); font-size: 0.88rem; margin-top: 4px; }
+
+  .container { max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+
+  /* ── Principle badge ── */
+  .principle {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+  }
+  .principle-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--accent2);
+    margin-bottom: 6px;
+  }
+  .principle p { color: #aaa; font-size: 0.88rem; }
+
+  /* ── Config panel ── */
+  .config {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .config h2 { font-family: 'Space Mono', monospace; font-size: 0.9rem; color: var(--text); }
+
+  label { font-size: 0.82rem; color: var(--muted); display: block; margin-bottom: 4px; }
+  input, select {
+    width: 100%;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.82rem;
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.82rem;
+    letter-spacing: 1px;
+    padding: 10px 22px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    align-self: flex-start;
+  }
+  button:hover { opacity: 0.85; transform: translateY(-1px); }
+  button:active { transform: translateY(0); }
+  button:disabled { opacity: 0.4; cursor: default; }
+
+  /* ── Code block ── */
+  .code-block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    line-height: 1.8;
+    overflow-x: auto;
+    white-space: pre;
+    color: #c9d1d9;
+  }
+  .code-block .cm { color: var(--muted); }     /* comment */
+  .code-block .kw { color: #ff7b72; }           /* keyword */
+  .code-block .st { color: #a5d6ff; }           /* string */
+  .code-block .fn { color: #d2a8ff; }           /* function */
+  .code-block .nm { color: #ffa657; }           /* name/var */
+  .code-block .nu { color: #79c0ff; }           /* number */
+
+  /* ── Result area ── */
+  #output {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    min-height: 60px;
+  }
+  #output h3 { font-family: 'Space Mono', monospace; font-size: 0.8rem; color: var(--muted); margin-bottom: 14px; }
+  .result-item {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 14px;
+    align-items: start;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .result-item:last-child { border-bottom: none; }
+  .thumb { width: 120px; height: 68px; object-fit: cover; border-radius: 4px; background: #222; }
+  .result-info h4 { font-size: 0.88rem; font-weight: 600; margin-bottom: 4px; }
+  .result-info .meta { font-size: 0.75rem; color: var(--muted); font-family: 'Space Mono', monospace; }
+  .result-info a { color: var(--accent); text-decoration: none; font-size: 0.75rem; }
+  .result-info a:hover { text-decoration: underline; }
+
+  .error { color: #f97316; font-family: 'Space Mono', monospace; font-size: 0.8rem; }
+  .spinner { color: var(--muted); font-size: 0.82rem; font-style: italic; }
+
+  /* ── Architecture annotations ── */
+  .annot {
+    display: inline-block;
+    background: rgba(255,0,51,0.12);
+    color: var(--accent);
+    font-size: 0.68rem;
+    font-family: 'Space Mono', monospace;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-left: 8px;
+    vertical-align: middle;
+    letter-spacing: 0.5px;
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+  }
+
+  .raw-toggle {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.72rem;
+    padding: 5px 12px;
+    margin-top: 10px;
+  }
+  #rawJson { display: none; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>▶ YouTube Data API v3</h1>
+  <p>Runnable demo · architectural principles annotated · zero build step</p>
+</header>
+
+<div class="container">
+
+  <!-- ── Principle 1 ── -->
+  <div class="principle">
+    <div class="principle-title">Principle 1 · Resource-oriented REST</div>
+    <p>
+      Every YouTube entity — <strong>videos</strong>, <strong>channels</strong>, <strong>playlists</strong>,
+      <strong>comments</strong> — is a <em>resource</em> with a stable URL.
+      You navigate the graph by following resource IDs, not by calling procedural methods.
+      The <code>search.list</code> endpoint returns lightweight references; you then call
+      <code>videos.list</code> with those IDs to fetch full resource representations.
+    </p>
+  </div>
+
+  <!-- ── Principle 2 ── -->
+  <div class="principle">
+    <div class="principle-title">Principle 2 · Partial responses (field masks)</div>
+    <p>
+      The API never forces you to receive the whole resource. The <code>part</code> parameter
+      selects top-level <em>resource parts</em> (<code>snippet</code>, <code>statistics</code>,
+      <code>contentDetails</code> …), and <code>fields</code> narrows down to exact properties.
+      This keeps payloads small and quota costs low — each part has an independent quota weight.
+    </p>
+  </div>
+
+  <!-- ── Principle 3 ── -->
+  <div class="principle">
+    <div class="principle-title">Principle 3 · Cursor-based pagination</div>
+    <p>
+      Result sets are delivered in pages of up to <code>maxResults</code> items.
+      The response contains a <code>nextPageToken</code> (and optionally <code>prevPageToken</code>)
+      you pass back as <code>pageToken</code> on the next request.
+      This is stable under concurrent writes — unlike offset-based pagination.
+    </p>
+  </div>
+
+  <!-- ── Principle 4 ── -->
+  <div class="principle">
+    <div class="principle-title">Principle 4 · API key + quota system</div>
+    <p>
+      All unauthenticated read access uses an <strong>API key</strong> attached as a query
+      parameter. Write operations and user-scoped data require OAuth 2.0.
+      Every method costs a fixed number of <em>quota units</em> per day (default: 10 000).
+      <code>search.list</code> costs 100 units; <code>videos.list</code> costs 1.
+      Design accordingly: cache aggressively, request only the parts you need.
+    </p>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ── Interactive demo ── -->
+  <div class="config">
+    <h2>▸ Live search demo</h2>
+
+    <div>
+      <label for="apiKey">API Key <span style="color:#f97316;font-size:0.75rem">(get one free at console.cloud.google.com)</span></label>
+      <input id="apiKey" type="password" placeholder="AIza…" autocomplete="off" spellcheck="false">
+    </div>
+
+    <div>
+      <label for="query">Search query</label>
+      <input id="query" type="text" value="software architecture" spellcheck="false">
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="maxResults">maxResults (1–10)</label>
+        <input id="maxResults" type="number" value="5" min="1" max="10">
+      </div>
+      <div>
+        <label for="order">order</label>
+        <select id="order">
+          <option value="relevance">relevance</option>
+          <option value="date">date</option>
+          <option value="viewCount">viewCount</option>
+          <option value="rating">rating</option>
+        </select>
+      </div>
+    </div>
+
+    <button id="runBtn" onclick="runDemo()">RUN REQUEST ↗</button>
+  </div>
+
+  <!-- ── Annotated code ── -->
+  <div>
+    <div class="code-block" id="codeBlock"><span class="cm">// ── Step 1: search.list ─────────────────────────────────────────────────
+// Resource-oriented: "search" is a pseudo-collection; results are references.</span>
+<span class="kw">const</span> <span class="nm">searchUrl</span> = <span class="kw">new</span> <span class="fn">URL</span>(<span class="st">"https://www.googleapis.com/youtube/v3/search"</span>);
+searchUrl.searchParams.<span class="fn">set</span>(<span class="st">"key"</span>,        apiKey);
+searchUrl.searchParams.<span class="fn">set</span>(<span class="st">"q"</span>,          query);
+searchUrl.searchParams.<span class="fn">set</span>(<span class="st">"type"</span>,       <span class="st">"video"</span>);
+searchUrl.searchParams.<span class="fn">set</span>(<span class="st">"part"</span>,       <span class="st">"id"</span>);            <span class="cm">// ◀ PRINCIPLE 2: request only the "id" part (1 quota unit saved)</span>
+searchUrl.searchParams.<span class="fn">set</span>(<span class="st">"maxResults"</span>, maxResults);    <span class="cm">// ◀ PRINCIPLE 3: page size</span>
+searchUrl.searchParams.<span class="fn">set</span>(<span class="st">"order"</span>,      order);
+
+<span class="kw">const</span> <span class="nm">searchRes</span>  = <span class="kw">await</span> <span class="fn">fetch</span>(searchUrl);
+<span class="kw">const</span> <span class="nm">searchData</span> = <span class="kw">await</span> searchRes.<span class="fn">json</span>();
+<span class="kw">const</span> <span class="nm">videoIds</span>   = searchData.items.<span class="fn">map</span>(<span class="nm">i</span> <span class="kw">=></span> i.id.videoId).<span class="fn">join</span>(<span class="st">","</span>);
+<span class="kw">const</span> <span class="nm">nextPage</span>   = searchData.nextPageToken;  <span class="cm">// ◀ PRINCIPLE 3: cursor for next page</span>
+
+<span class="cm">// ── Step 2: videos.list ─────────────────────────────────────────────────
+// Resource-oriented: resolve IDs → full Video resources.
+// Cost: 1 quota unit (vs 100 for search.list).</span>
+<span class="kw">const</span> <span class="nm">videoUrl</span> = <span class="kw">new</span> <span class="fn">URL</span>(<span class="st">"https://www.googleapis.com/youtube/v3/videos"</span>);
+videoUrl.searchParams.<span class="fn">set</span>(<span class="st">"key"</span>,    apiKey);
+videoUrl.searchParams.<span class="fn">set</span>(<span class="st">"id"</span>,     videoIds);
+videoUrl.searchParams.<span class="fn">set</span>(<span class="st">"part"</span>,   <span class="st">"snippet,statistics,contentDetails"</span>); <span class="cm">// ◀ PRINCIPLE 2: multiple parts</span>
+videoUrl.searchParams.<span class="fn">set</span>(<span class="st">"fields"</span>, <span class="st">"items(id,snippet(title,channelTitle,thumbnails/medium),statistics(viewCount,likeCount),contentDetails(duration))"</span>); <span class="cm">// ◀ PRINCIPLE 2: field mask</span>
+
+<span class="kw">const</span> <span class="nm">videoRes</span>  = <span class="kw">await</span> <span class="fn">fetch</span>(videoUrl);
+<span class="kw">const</span> <span class="nm">videoData</span> = <span class="kw">await</span> videoRes.<span class="fn">json</span>();
+<span class="cm">// videoData.items → array of Video resources ✓</span></div>
+  </div>
+
+  <!-- ── Output ── -->
+  <div id="output">
+    <h3>— RESULTS APPEAR HERE —</h3>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function iso8601ToHuman(d) {
+  // PT4M13S → 4:13
+  const m = d.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!m) return d;
+  const h = parseInt(m[1]||0), mn = parseInt(m[2]||0), s = parseInt(m[3]||0);
+  if (h) return `${h}:${String(mn).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  return `${mn}:${String(s).padStart(2,'0')}`;
+}
+function fmtNum(n) {
+  if (!n) return '—';
+  const v = parseInt(n);
+  if (v >= 1e6) return (v/1e6).toFixed(1)+'M';
+  if (v >= 1e3) return (v/1e3).toFixed(1)+'K';
+  return v.toString();
+}
+
+// ── Main demo function ────────────────────────────────────────────────────────
+async function runDemo() {
+  const apiKey     = document.getElementById('apiKey').value.trim();
+  const query      = document.getElementById('query').value.trim();
+  const maxResults = document.getElementById('maxResults').value;
+  const order      = document.getElementById('order').value;
+  const out        = document.getElementById('output');
+  const btn        = document.getElementById('runBtn');
+
+  if (!apiKey) { out.innerHTML = '<p class="error">⚠ Paste your API key above.</p>'; return; }
+  if (!query)  { out.innerHTML = '<p class="error">⚠ Enter a search query.</p>'; return; }
+
+  btn.disabled = true;
+  out.innerHTML = '<p class="spinner">Fetching… (2 requests: search.list → videos.list)</p>';
+
+  try {
+    // ── PRINCIPLE 1 + 3: search.list → lightweight resource references + pagination cursor
+    const searchUrl = new URL("https://www.googleapis.com/youtube/v3/search");
+    searchUrl.searchParams.set("key",        apiKey);
+    searchUrl.searchParams.set("q",          query);
+    searchUrl.searchParams.set("type",       "video");
+    searchUrl.searchParams.set("part",       "id");           // PRINCIPLE 2: only id part
+    searchUrl.searchParams.set("maxResults", maxResults);
+    searchUrl.searchParams.set("order",      order);
+
+    const searchRes  = await fetch(searchUrl);
+    const searchData = await searchRes.json();
+
+    if (searchData.error) throw new Error(searchData.error.message);
+
+    const videoIds = searchData.items.map(i => i.id.videoId).join(",");
+    const nextPage = searchData.nextPageToken;
+
+    // ── PRINCIPLE 1: resolve IDs → full Video resources
+    // ── PRINCIPLE 2: field mask keeps payload minimal
+    const videoUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
+    videoUrl.searchParams.set("key",    apiKey);
+    videoUrl.searchParams.set("id",     videoIds);
+    videoUrl.searchParams.set("part",   "snippet,statistics,contentDetails");
+    videoUrl.searchParams.set("fields", "items(id,snippet(title,channelTitle,thumbnails/medium),statistics(viewCount,likeCount),contentDetails(duration))");
+
+    const videoRes  = await fetch(videoUrl);
+    const videoData = await videoRes.json();
+    if (videoData.error) throw new Error(videoData.error.message);
+
+    // ── Render ──────────────────────────────────────────────────────────────
+    let html = `<h3>RESULTS · ${videoData.items.length} videos · quota used ≈ 101 units</h3>`;
+
+    for (const v of videoData.items) {
+      const sn = v.snippet, st = v.statistics, cd = v.contentDetails;
+      html += `
+        <div class="result-item">
+          <img class="thumb" src="${sn.thumbnails?.medium?.url || ''}" alt="" loading="lazy">
+          <div class="result-info">
+            <h4>${sn.title}</h4>
+            <div class="meta">${sn.channelTitle} · ${iso8601ToHuman(cd.duration)} · 👁 ${fmtNum(st.viewCount)} · 👍 ${fmtNum(st.likeCount)}</div>
+            <a href="https://www.youtube.com/watch?v=${v.id}" target="_blank" rel="noopener">▶ watch on YouTube</a>
+          </div>
+        </div>`;
+    }
+
+    if (nextPage) {
+      html += `<p style="margin-top:12px;font-size:0.78rem;color:var(--muted);font-family:'Space Mono',monospace">
+        PRINCIPLE 3 — cursor-based pagination: nextPageToken = <code style="color:var(--accent2)">${nextPage}</code><br>
+        Pass it as <code style="color:#aaa">pageToken=${nextPage}</code> to fetch the next page.
+      </p>`;
+    }
+
+    // Raw JSON toggle
+    html += `<button class="raw-toggle" onclick="toggleRaw()">SHOW RAW JSON</button>
+      <pre id="rawJson" class="code-block" style="font-size:0.7rem;max-height:300px;overflow:auto">${JSON.stringify(videoData, null, 2)}</pre>`;
+
+    out.innerHTML = html;
+
+  } catch(e) {
+    out.innerHTML = `<p class="error">Error: ${e.message}</p>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function toggleRaw() {
+  const el = document.getElementById('rawJson');
+  el.style.display = el.style.display === 'block' ? 'none' : 'block';
+}
+
+// Allow Enter key to trigger run
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.activeElement.tagName !== 'BUTTON') runDemo();
+});
+</script>
+</body>
+</html>
